@@ -4,7 +4,7 @@ The backend uses synchronous FastAPI route functions, Pydantic input/output sche
 
 ## Request and data lifecycle
 
-`create_app(database_path)` constructs an app and its engine. The lifespan handler creates missing tables on startup and disposes the engine on shutdown. Constructing or importing the app does not create a database. Each request opens one SQLAlchemy session; a successful mutation commits once, and uncommitted work rolls back when the session closes.
+`create_app(database_path)` constructs an app and its engine. The lifespan handler creates missing tables and inserts missing local discovery metadata on startup, then disposes the engine on shutdown. Startup never seeds tracked Oshi or updates. Constructing or importing the app does not create a database. Each request opens one SQLAlchemy session; a successful mutation commits once, and uncommitted work rolls back when the session closes.
 
 Route modules access the ORM directly. Scoring is a pure function in `app/scoring.py`; there is no external service, repository layer, background worker, ingestion pipeline, or network call in application/seed logic.
 
@@ -31,9 +31,21 @@ SQLite uses Python 3.12's explicit transactional mode (`autocommit=False`). Fore
 
 Enums, score/weight/priority ranges, date ordering, foreign keys, and duplicate join rows have database constraints in addition to API validation. Important filtering and foreign-key columns are indexed.
 
+## Discovery catalog
+
+`CatalogEntity` and `EntityAlias` hold discoverable metadata separately from personal `Oshi`. Catalog types reuse `OshiType`; ITZY uses `ARTIST`, with its group identity in the description. Eight local entities and seventeen aliases are inserted idempotently by `app/catalog.py` on startup. Unique `(provider, external_id)` and `(entity_id, normalized_alias)` keys make repeat startup safe and preserve existing metadata edits. Local external IDs are stable seed slugs, not identifiers fetched from a provider. No news/update records are created by catalog seeding.
+
+`CatalogTracking` is a small optional link table with unique entity and Oshi IDs. It keeps discovery identity through a personal rename without adding a column to the existing Oshi table. Deleting an Oshi cascades only to its link, keywords, and update associations; it never deletes the catalog entity or aliases. Catalog deletion would likewise remove only the link, not personal Oshi. Manual creation remains independent. Existing rows are recognized by same-type normalized canonical/alias name matching, without changing or backfilling personal rows at startup.
+
+Discovery uses a direct in-memory scan of the small local catalog, loaded with its aliases. Python NFKC/casefold/whitespace normalization avoids SQLite's limited Unicode case handling. Exact names rank ahead of exact aliases, then prefixes and substrings. Result size is capped. There is no full-text engine, provider framework, recommendation service, or external network access.
+
+Tracking first reserves SQLite's write lock using a no-op update of the target catalog ID, before reading existing tracking state. The transaction then returns an existing Oshi or creates one and its unique catalog link together. This prevents concurrent discovery Add requests from creating duplicate personal rows while keeping the existing manual-create contract unchanged. Keywords copy the canonical name and useful aliases at weight 1; existing personal keyword/priority/active values are left alone.
+
 ## Local operation
 
 Scripts bind the backend and frontend to `127.0.0.1`. Next.js telemetry is disabled in its npm scripts. The backend allows only localhost Host headers and CORS origins `http://localhost:3000` / `http://127.0.0.1:3000`. CORS is browser integration configuration; it is not authentication. The project intentionally has no authentication and must stay on loopback.
+
+The optional local CLI in `scripts/oshi.py` wraps these existing launch commands. A detached Python supervisor anchors each service process group; `.runtime/` holds atomic ownership state and append-only logs. Commands serialize through a file lock, validate process identity and HTTP readiness, and terminate only verified owned groups. The installer creates a quoted wrapper in a user-owned PATH directory. It changes neither application contracts nor shell startup files. See [local-cli.md](local-cli.md) for shutdown, test isolation, and recovery decisions.
 
 The default SQLite path is absolute after resolving `data/oshi.db` relative to this repository. `OSHI_DATABASE_PATH` overrides the filesystem path. No database URL abstraction is needed for this SQLite-only milestone.
 
@@ -41,7 +53,7 @@ Swagger UI at `/docs` and ReDoc at `/redoc` are FastAPI's standard documentation
 
 ## Schema changes and dependency management
 
-For this new v0.1 project, `Base.metadata.create_all()` initializes missing tables. It does **not** alter existing tables. There is no migration framework yet. Before the first schema-changing follow-up, add an explicit migration with a backup path; do not erase personal data. This is a deliberate milestone limit, not a migration implementation.
+`Base.metadata.create_all()` initializes missing tables. It does **not** alter existing tables. The discovery milestone adds only `catalog_entities`, `entity_aliases`, and `catalog_tracking`; no original table is renamed, repurposed, or altered. A SQLite backup is taken before applying those additions, and old-schema startup is covered by tests. There is no migration framework yet. A future change to existing columns requires an explicit migration with a backup path; never erase personal data.
 
 `backend/pyproject.toml` declares compatible dependencies; `backend/requirements-dev.lock` records tested exact runtime/development/build versions. `scripts/setup.sh` installs the lock and then the local package without dependency resolution or build isolation. `frontend/package-lock.json` is installed with `npm ci`. TypeScript ESLint is pinned to 8.46.4 to keep lint tooling compatible with the installed Node 22.11 and the Next.js minimum. Tests use HTTPX2 for the current Starlette TestClient; one upstream AnyIO alias deprecation is narrowly ignored, while other warnings fail tests.
 

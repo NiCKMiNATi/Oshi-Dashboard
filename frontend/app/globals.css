@@ -355,8 +355,13 @@ input[type="checkbox"] {
   margin: 26px 8px;
   flex-shrink: 0;
 }
-.sidebar-divider.short {
-  margin: 19px 8px;
+.sidebar-management {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.sidebar-management > .eyebrow {
+  margin-bottom: 8px;
 }
 .sidebar-section .nav-item + .nav-item {
   margin-top: 4px;
@@ -371,7 +376,7 @@ input[type="checkbox"] {
   gap: 9px;
   align-items: flex-start;
   margin: auto 8px 0;
-  padding-top: 52px;
+  padding-top: 32px;
   font-size: 11px;
   color: var(--text-secondary);
 }
@@ -495,12 +500,35 @@ input[type="checkbox"] {
   color: var(--text-muted);
 }
 .secondary-filters select {
+  appearance: none;
   font-size: 11px;
-  padding: 5px 9px;
-  min-height: 29px;
+  padding: 6px 32px 6px 13px;
+  min-height: 32px;
   color: #c4d0df;
-  background: #11171e;
-  border-color: var(--border);
+  background: #1a212a;
+  border-color: #2d3743;
+  border-radius: 16px;
+}
+.secondary-filters select:hover {
+  background: #233043;
+  border-color: #44566e;
+}
+.secondary-filters .select-control {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+.secondary-filters .select-control::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  top: 12px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid #a8b8cd;
+  border-bottom: 1.5px solid #a8b8cd;
+  transform: rotate(45deg);
+  pointer-events: none;
 }
 .filter-section {
   padding-bottom: 20px;
@@ -537,12 +565,22 @@ input[type="checkbox"] {
   font-size: 10px;
 }
 .update-feed {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 17px;
 }
 .update-card {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "badges badges"
+    "title title"
+    "timing timing"
+    "summary summary"
+    "actions score";
+  column-gap: 22px;
   padding: 17px 19px 15px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -552,6 +590,7 @@ input[type="checkbox"] {
   border-color: #44566e;
 }
 .card-badges {
+  grid-area: badges;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -609,17 +648,27 @@ input[type="checkbox"] {
   color: #b4d7e3;
 }
 .priority-score {
-  margin-left: auto;
-  color: var(--accent);
-  font-size: 11px;
+  grid-area: score;
+  align-self: end;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
   white-space: nowrap;
 }
 .priority-score strong {
-  font-size: 13px;
-  margin-left: 4px;
+  font-size: 12px;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 .update-card h2 {
+  grid-area: title;
   font-size: 17px;
   line-height: 1.65;
   letter-spacing: 0;
@@ -647,6 +696,7 @@ input[type="checkbox"] {
   outline-offset: 3px;
 }
 .card-summary {
+  grid-area: summary;
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.8;
@@ -657,25 +707,48 @@ input[type="checkbox"] {
   overflow: hidden;
   overflow-wrap: anywhere;
 }
-.card-metadata {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  color: var(--text-muted);
-  font-size: 10px;
-  margin-top: 13px;
-  line-height: 1.8;
-}
-.card-metadata > span,
-.card-keywords {
-  overflow-wrap: anywhere;
-}
 .card-footer {
+  grid-area: actions;
   display: flex;
   align-items: center;
   gap: 12px;
-  justify-content: space-between;
   margin-top: 13px;
+}
+.card-actionable {
+  grid-area: timing;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 18px;
+  margin: 9px 0 0;
+  min-width: 0;
+}
+.card-actionable > div {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  max-width: 100%;
+}
+.card-actionable dt {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.card-actionable dd {
+  margin: 0;
+  color: #dce4ef;
+  font-size: 12px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.card-deadline dt {
+  color: #d6bc8e;
+  font-weight: 600;
+}
+.card-deadline dd {
+  color: #f0d5a8;
+  font-size: 12px;
+  font-weight: 600;
 }
 .status-actions {
   position: relative;
@@ -686,6 +759,17 @@ input[type="checkbox"] {
   gap: 7px;
 }
 .status-actions .button {
+  font-size: 11px;
+}
+.status-actions .status-label {
+  color: inherit;
+  font-size: inherit;
+}
+.current-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-left: 1px solid #344150;
   font-size: 11px;
 }
 .ignore-action {
@@ -749,13 +833,51 @@ dialog::backdrop {
   max-height: 100dvh;
   width: 390px;
   max-width: 100vw;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   border-width: 0 0 0 1px;
   box-shadow: -12px 0 45px rgb(0 0 0 / 20%);
+  opacity: 0;
+  transform-origin: right center;
+  transform: translate3d(56px, 0, 0) scale(0.985);
+  transition:
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms ease-out;
+  will-change: transform, opacity;
 }
 .detail-drawer::backdrop {
   background: rgb(2 5 10 / 16%);
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+.detail-drawer[data-visible="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+.detail-drawer[data-visible="true"]::backdrop {
+  opacity: 1;
+}
+.detail-drawer.is-closing {
+  transition:
+    transform 220ms cubic-bezier(0.4, 0, 0.6, 1),
+    opacity 200ms cubic-bezier(0.4, 0, 0.6, 1);
+}
+.detail-drawer.is-closing::backdrop {
+  transition: opacity 200ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .detail-drawer,
+  .detail-drawer.is-closing,
+  .detail-drawer::backdrop,
+  .detail-drawer.is-closing::backdrop {
+    transition-duration: 0s;
+  }
 }
 .drawer-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-elevated);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -775,38 +897,16 @@ dialog::backdrop {
 .drawer-badges {
   display: flex;
   align-items: center;
-  justify-content: space-between;
 }
 .drawer-title {
-  font-size: 21px;
+  font-size: 19px;
   font-weight: 600;
   line-height: 1.65;
-  margin-top: 22px;
+  margin-top: 14px;
   overflow-wrap: anywhere;
 }
-.drawer-priority {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #142032;
-  border: 1px solid #293c55;
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin: 21px 0;
-  color: var(--accent);
-  font-size: 11px;
-}
-.drawer-priority strong {
-  font-size: 21px;
-  font-variant-numeric: tabular-nums;
-}
-.drawer-priority small {
-  font-size: 10px;
-  color: var(--text-secondary);
-  font-weight: 400;
-  margin-left: 4px;
-}
 .drawer-summary {
+  margin-top: 12px;
   color: #aeb9c7;
   font-size: 12px;
   line-height: 1.85;
@@ -814,11 +914,9 @@ dialog::backdrop {
   overflow-wrap: anywhere;
 }
 .detail-metadata {
-  margin: 25px 0 0;
-  padding: 18px 0;
-  border-block: 1px solid var(--border);
+  margin: 12px 0 0;
   display: grid;
-  gap: 16px;
+  gap: 8px;
 }
 .detail-metadata > div {
   display: grid;
@@ -838,20 +936,41 @@ dialog::backdrop {
 .detail-metadata .deadline-row dd {
   color: #dfc49a;
 }
-.drawer-context {
-  margin-top: 23px;
+.drawer-section,
+.drawer-why {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
-.drawer-context .eyebrow {
-  font-size: 9px;
-  letter-spacing: 1px;
-  margin-bottom: 10px;
+.drawer-section h4,
+.drawer-why summary {
+  font-size: 12px;
+  font-weight: 600;
 }
-.drawer-context p {
-  font-size: 11px;
+.drawer-why summary {
+  width: fit-content;
+  cursor: pointer;
   color: var(--text-secondary);
 }
-.drawer-context .help-text {
+.drawer-score {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.drawer-why .badge-list {
   margin-top: 8px;
+}
+.source-publisher {
+  margin-top: 10px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.source-published {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 .badge-list {
   display: flex;
@@ -859,12 +978,106 @@ dialog::backdrop {
   flex-wrap: wrap;
 }
 .source-link {
-  margin-top: 28px;
+  margin-top: 12px;
+}
+.source-link:disabled {
+  opacity: 1;
+  cursor: default;
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+}
+.source-link + .help-text {
+  margin-top: 7px;
 }
 .drawer-actions {
   margin-top: 23px;
   padding-top: 20px;
   border-top: 1px solid var(--border);
+}
+.discover-content {
+  padding-top: 18px;
+}
+.discover-content > p:first-child {
+  margin-bottom: 18px;
+  color: var(--text-secondary);
+}
+.discover-content > input {
+  width: 100%;
+  padding: 14px;
+  font-size: 14px;
+}
+.discover-welcome,
+.discover-message {
+  padding: 26px 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.discover-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+.discover-results {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0;
+  display: grid;
+  gap: 12px;
+}
+.discover-candidate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.discover-candidate > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.discover-candidate h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+.discover-candidate > button {
+  flex-shrink: 0;
+}
+.discover-aliases {
+  margin: 10px 0 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.discover-candidate .tracking-button {
+  opacity: 1;
+  color: #acd2c4;
+  background: transparent;
+}
+.discover-notice {
+  min-height: 20px;
+  margin: 12px 0;
+  color: #acd2c4;
+  font-size: 13px;
+}
+.discover-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.manual-options {
+  align-self: start;
+}
+.keyword-field.simple-keyword {
+  grid-template-columns: minmax(0, 1fr) 32px;
 }
 .modal {
   width: 530px;
@@ -1064,20 +1277,20 @@ dialog::backdrop {
   width: 12%;
 }
 .oshi-table th:nth-child(4) {
-  width: 31%;
+  width: 27%;
 }
 .oshi-table th:nth-child(5) {
   width: 14%;
 }
 .oshi-table th:last-child {
-  width: 14%;
+  width: 18%;
 }
 .oshi-table tbody tr:not(:last-child) {
   border-bottom: 1px solid var(--border);
 }
 .oshi-table tbody th,
 .oshi-table td {
-  padding: 23px 18px;
+  padding: 18px;
   vertical-align: middle;
   font-weight: 400;
   overflow-wrap: anywhere;
@@ -1118,12 +1331,6 @@ dialog::backdrop {
   font-size: 10px;
   padding: 3px 8px;
 }
-.table-keywords small {
-  color: #93a6bd;
-  font-size: 9px;
-  border-left: 1px solid #394657;
-  padding-left: 5px;
-}
 .disabled-keyword {
   color: var(--text-muted);
   border-style: dashed;
@@ -1154,10 +1361,19 @@ dialog::backdrop {
 .table-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 7px;
 }
-.table-actions .text-button {
+.table-actions .button {
   font-size: 11px;
+}
+.remove-button {
+  color: #d4a6ac;
+  border-color: #53383f;
+  background: #251d24;
+}
+.remove-button:hover {
+  color: #f0c1c5;
+  border-color: #79505a;
 }
 .table-loading {
   padding: 40px 24px;
@@ -1414,10 +1630,6 @@ dialog::backdrop {
   }
   .card-badges {
     gap: 6px;
-  }
-  .priority-score {
-    width: 100%;
-    margin-left: 0;
   }
   .error-state {
     flex-wrap: wrap;

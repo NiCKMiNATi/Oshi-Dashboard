@@ -16,10 +16,14 @@ Base URL: `http://127.0.0.1:8000`. Send JSON with `Content-Type: application/jso
 | PATCH | `/api/updates/{id}` | Merge supplied fields with the stored record, validate, recalculate score. | 200, update |
 | PATCH | `/api/updates/{id}/status` | Change status only. | 200, update |
 | GET | `/api/stats` | Global counts of oshi and updates, grouped by category and status. | 200, stats |
+| GET | `/api/discover` | Ranked local catalog search by canonical name and aliases. | 200, array |
+| POST | `/api/discover/{entity_id}/track` | Track a catalog entity or return its existing tracked Oshi. | 201 new / 200 existing, oshi |
 
 Unknown resource IDs return 404. Invalid JSON fields, enum values, ranges, URLs, dates, duplicate associations, or unknown linked `oshi_ids` return 422. Errors use FastAPI's `{"detail": ...}` envelope; details may be a message, validation list, or the unknown-association object. Unknown JSON request fields and unknown update-list query fields are rejected. Mutations are atomic.
 
 ## Oshi and keywords
+
+Discovery is separate from tracking: see [Discover](#discover) below. Manual creation through `/api/oshi` remains independent of the catalog.
 
 Oshi creation requires `name` (1–200 trimmed characters) and `type`. Optional `priority` is an integer 0–100 (default 50), `active` defaults to `true`, and `keywords` defaults to `[]`. Each keyword requires a nonblank `value` (up to 200 characters); `weight` is an integer 0–100 (default 1). At most 100 keywords per oshi are accepted.
 
@@ -103,3 +107,15 @@ For an empty database:
   "by_status": {"NEW": 0, "SAVED": 0, "INTERESTED": 0, "GOING": 0, "BOUGHT": 0, "IGNORED": 0}
 }
 ```
+
+## Discover
+
+`GET /api/discover?q=Higedan` returns `Official髭男dism`. Candidates contain `id`, `name`, `type`, nullable `description`, `aliases` (strings), `provider`, and `is_tracked`. Provider is `local` for the bundled collection. Search makes no external requests.
+
+Queries allow up to 200 characters. Missing, blank, or whitespace-only queries return `[]`; unknown queries also return `[]`. `limit` defaults to 20 and accepts 1–50. Search applies Unicode NFKC, case folding, and whitespace removal to canonical names, aliases, and queries. Literal `%` and `_` are not wildcards. Ranking is canonical exact, alias exact, canonical prefix, alias prefix, canonical substring, then alias substring; ties sort by normalized canonical name and ID. No typo correction, transliteration, or semantic matching is implied beyond supplied aliases.
+
+`is_tracked` is true when an explicit catalog link exists, or an existing Oshi of the same type has a normalized name matching the canonical name or one of its aliases. Paused rows still count as tracked; this operation never silently reactivates them. If multiple legacy/manual rows match, the lowest ID is reused. Names with different types remain distinct. Existing linked identity takes precedence over name matching and survives later renaming.
+
+`POST /api/discover/{entity_id}/track` needs no body. It creates an ordinary Oshi with the canonical name/type, priority 50, active true, and deduplicated canonical/alias keywords at weight 1. New tracking returns 201; duplicate requests return the same Oshi with 200 and do not change personal fields. Unknown catalog IDs return 404. Concurrent discovery tracking is serialized by SQLite before looking up the existing link, and the link is unique per entity/Oshi.
+
+Deletion remains `DELETE /api/oshi/{id}`. It removes the personal following and optional catalog link, retains update history, and leaves catalog entities/aliases intact. Searching and tracking the entity again is supported; old update associations are not automatically restored. Manual creation never requires or inserts a catalog entity.

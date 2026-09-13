@@ -96,6 +96,16 @@ class OshiRead(Schema):
     keywords: list[KeywordRead]
 
 
+class DiscoverRead(Schema):
+    id: int
+    name: str
+    type: OshiType
+    description: str | None
+    aliases: list[str]
+    provider: str
+    is_tracked: bool
+
+
 def unique_ids(values: list[int]) -> list[int]:
     if len(values) != len(set(values)):
         raise ValueError("oshi_ids must not contain duplicates")

@@ -22,6 +22,39 @@ npm --prefix frontend run dev
 
 Open `http://127.0.0.1:3000` for the feed or `http://127.0.0.1:3000/oshi` to manage your following. Both servers run in the foreground; stop each with Ctrl-C.
 
+## Local CLI for macOS
+
+After setup, install the user-owned command once:
+
+```sh
+./scripts/install-cli.sh
+```
+
+The installer creates `~/.local/bin/oshi` without sudo. If that directory is missing from PATH, it prints this exact zsh line. Add it to `~/.zshrc` yourself for future terminals and run it in the current terminal:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+The installer does not edit shell startup files. All six commands work from any directory, including paths with spaces:
+
+| Command | Behavior |
+| --- | --- |
+| `oshi kaishi` | Start both services detached, wait for HTTP readiness, and print URLs. Already healthy CLI-owned services are reused. |
+| `oshi shuuryou` | Gracefully stop CLI-owned process groups. Already stopped is a clean no-op. |
+| `oshi saikidou` | Stop, start, and verify both services. |
+| `oshi status` | Show actual process/HTTP status, ownership, PIDs, URLs, and SQLite existence; clean stale state. |
+| `oshi hiraku` | Open `http://localhost:3000` with macOS `open` when ready. Otherwise explain how to start. |
+| `oshi test` | Run backend and CLI tests, frontend lint/typecheck, and the existing browser suite. Temporarily stop CLI-owned services, then restore their previous running state. |
+
+The API uses port **8000** and the frontend **3000**, both bound to `127.0.0.1`. Closing the launching terminal leaves CLI-started services running. Services started by the foreground scripts or another tool are reported as unmanaged; the CLI will not adopt or stop them. Stop those from their original terminal before using `kaishi`, `saikidou`, or `test`.
+
+Logs append to `.runtime/backend.log` and `.runtime/frontend.log` in this repository. `.runtime/` is ignored by Git. Startup creates missing tables and the small discovery catalog; it never seeds tracked oshi or updates. Use `./scripts/seed.sh` explicitly if you want fictional demo updates and following.
+
+To uninstall, run `oshi shuuryou`, then `rm "$HOME/.local/bin/oshi"`. Your source, database, and logs remain. Reinstall by rerunning `./scripts/install-cli.sh`. If the repository moves, stop first, move it, rerun `./scripts/setup.sh` to repair path-dependent dependencies, then rerun `./scripts/install-cli.sh` to update the wrapper's absolute project path.
+
+Troubleshooting: for `command not found`, apply the PATH line above (or use `~/.local/bin/oshi`). For startup failures, read the two logs and run `oshi status`; occupied ports require stopping their original launcher. Missing dependencies require `./scripts/setup.sh`. Browser checks require installed Google Chrome. Do not delete runtime state while services are alive. Detailed lifecycle behavior and recovery are in [the CLI guide](docs/local-cli.md).
+
 ## What is included
 
 - SQLAlchemy models for `Oshi`, `Keyword`, `Update`, and `UpdateOshi`, backed by `data/oshi.db`.
@@ -32,9 +65,14 @@ Open `http://127.0.0.1:3000` for the feed or `http://127.0.0.1:3000/oshi` to man
 - Isolated backend unit/API tests and locked Python/npm dependencies.
 - A persistent desktop sidebar, category/oshi/status/score filters, client-side search, update cards, and an accessible detail drawer.
 - Persistent status actions and oshi create/edit/pause/delete forms, feed stats, and documented scoring rules.
+- Local discovery by canonical name or alias, one-click tracking, and manual creation for anything outside the catalog.
 - Loading, empty, request-error, and backend-offline states with retry; no substitute network data.
 
-Demo records use `[DEMO]` titles, explicit fictional notices, and `example.invalid` URLs. They are realistic fixtures, not verified announcements. The Ryujin fixture assumes ITZY's Ryujin. Seeding again adds missing fixtures while preserving existing records and user edits; it does not refresh dates. Startup creates missing tables but never seeds automatically.
+Demo records use `[DEMO]` titles, explicit fictional notices, and `example.invalid` URLs. They are realistic fixtures, not verified announcements. Their detail drawer shows a disabled **Demo source** button so fictional URLs never open. Real updates keep their external source links. The Ryujin fixture assumes ITZY's Ryujin. Seeding again adds missing fixtures while preserving existing records and user edits; it does not refresh dates. Startup never seeds personal following or updates.
+
+**+ Add oshi** opens discovery. Try Higedan, ITZY, JJK, 進撃, AOT, Gojo, Genshin, Hyouka, or 内田雄馬. The local catalog contains eight canonical entries and their aliases; it does not contact external providers. **Add** tracks the canonical result; **Tracking** indicates it already exists in My Oshi, including paused items. Removing an oshi leaves its catalog entry discoverable, so you can add it again later. Old update links are not restored automatically. **+ Add manually** accepts any name, type, and optional aliases/keywords, even when discovery has no match. Priority and keyword weights remain under **More options**.
+
+To stop following an oshi, open **Oshi Management → Remove** on its row and confirm. The sidebar, selected filter, and stats update automatically. Existing update history remains. Feed cards show the essentials; open a card for source information, full dates, and keyword context.
 
 ## Repository
 
@@ -81,8 +119,13 @@ Tests create temporary databases and never use the personal database. Browser in
 - [Verification and handoff](docs/implementation-report.md)
 - [Frontend behavior and integration](docs/frontend-integration.md)
 - [Frontend verification report](docs/frontend-integration-report.md)
-- [Script usage and reserved CLI commands](scripts/README.md)
+- [Development script usage](scripts/README.md)
+- [Local CLI lifecycle and troubleshooting](docs/local-cli.md)
+- [Local CLI verification report](docs/local-cli-report.md)
+- [UI refinement and verification](docs/ui-refinement-1-report.md)
+- [Dashboard simplification, removal, and source-link verification](docs/usability-refinement-2-report.md)
+- [Local discovery and tracking verification](docs/discover-oshi-1-report.md)
 
 The UI follows the accessible [Figma dashboard](https://www.figma.com/design/dS4aiNmBAUBURfRpKK6dgk?node-id=2-2) and [management frame](https://www.figma.com/design/dS4aiNmBAUBURfRpKK6dgk?node-id=2-116), with the supplied dark tokens. The connector exposes these under “v0.1 Wireframes”; a separate “v0.1 Prototype” page was not available during implementation.
 
-MSN ingestion, authentication, deployment, PostgreSQL, and the reserved `oshi` CLI are outside this milestone.
+MSN ingestion, authentication, deployment, and PostgreSQL remain outside this milestone.

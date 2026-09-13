@@ -16,11 +16,12 @@ export function StatusActions({
 }) {
   const actions: [UpdateStatus, string][] = [
     ["SAVED", "Save"],
-    drawer ? ["GOING", "Going"] : ["INTERESTED", "Interested"],
+    ["INTERESTED", "Interested"],
+    ...(drawer ? [["GOING", "Going"] as [UpdateStatus, string]] : []),
     ["IGNORED", "Ignore"],
   ];
   return (
-    <div className="status-actions" aria-label="Update actions">
+    <div className="status-actions" role="group" aria-label="Update actions">
       {actions.map(([status, label]) => (
         <button
           key={status}
@@ -29,9 +30,23 @@ export function StatusActions({
           aria-pressed={update.status === status}
           onClick={() => onChange(status)}
         >
-          {update.status === status ? STATUS_LABELS[status] : label}
+          {update.status === status ? (
+            <span className={`status-label status-${status.toLowerCase()}`}>
+              {STATUS_LABELS[status]}
+            </span>
+          ) : (
+            label
+          )}
         </button>
       ))}
+      {!actions.some(([status]) => update.status === status) && (
+        <span
+          className={`current-status status-${update.status.toLowerCase()}`}
+        >
+          <span className="sr-only">Current status: </span>
+          <span className="status-label">{STATUS_LABELS[update.status]}</span>
+        </span>
+      )}
       {busy && (
         <span className="action-progress" role="status">
           Saving…

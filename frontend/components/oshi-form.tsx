@@ -13,14 +13,17 @@ import { Modal } from "./modal";
 
 export function OshiForm({
   oshi,
+  initialName = "",
   onClose,
   onSaved,
 }: {
   oshi?: Oshi;
+  initialName?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [name, setName] = useState(oshi?.name ?? "");
+  const [name, setName] = useState(oshi?.name ?? initialName);
+  const [advanced, setAdvanced] = useState(Boolean(oshi));
   const [type, setType] = useState<OshiType>(oshi?.type ?? "OTHER");
   const [priority, setPriority] = useState(String(oshi?.priority ?? 50));
   const [active, setActive] = useState(oshi?.active ?? true);
@@ -89,14 +92,15 @@ export function OshiForm({
       </div>
       <form className="oshi-form" onSubmit={submit}>
         <p className="form-intro">
-          Make room for what you love. Fine-tune the keywords that matter to
-          you.
+          {oshi
+            ? "Fine-tune the keywords that matter to you."
+            : "Your favorites don’t need to be in a catalog. Add a name and any aliases you use."}
         </p>
         <fieldset disabled={busy}>
           <label>
             Name
             <input
-              autoFocus
+              data-initial-focus
               name="name"
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -119,41 +123,59 @@ export function OshiForm({
                 ))}
               </select>
             </label>
-            <label>
-              Priority
-              <input
-                name="priority"
-                type="number"
-                min={0}
-                max={100}
-                step={1}
-                required
-                value={priority}
-                onChange={(event) => setPriority(event.target.value)}
-              />
-            </label>
+            {advanced && (
+              <label>
+                Priority
+                <input
+                  name="priority"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  required
+                  value={priority}
+                  onChange={(event) => setPriority(event.target.value)}
+                />
+              </label>
+            )}
           </div>
-          <p className="help-text">
-            Priority is 0–100 and controls your oshi list order. It doesn’t
-            multiply relevance points.
-          </p>
-          <label className="checkbox-label">
-            <input
-              name="active"
-              type="checkbox"
-              checked={active}
-              onChange={(event) => setActive(event.target.checked)}
-            />
-            <span>
-              Actively following
-              <small>
-                Paused oshi stay in your history and contribute no oshi or
-                keyword points.
-              </small>
-            </span>
-          </label>
+          {!oshi && (
+            <button
+              className="text-button manual-options"
+              type="button"
+              aria-expanded={advanced}
+              onClick={() => setAdvanced((value) => !value)}
+            >
+              {advanced ? "Fewer options" : "More options"}
+            </button>
+          )}
+          {advanced && (
+            <>
+              <p className="help-text">
+                Priority is 0–100 and controls your oshi list order. It doesn’t
+                multiply relevance points.
+              </p>
+              <label className="checkbox-label">
+                <input
+                  name="active"
+                  type="checkbox"
+                  checked={active}
+                  onChange={(event) => setActive(event.target.checked)}
+                />
+                <span>
+                  Actively following
+                  <small>
+                    Paused oshi stay in your history and contribute no oshi or
+                    keyword points.
+                  </small>
+                </span>
+              </label>
+            </>
+          )}
           <div className="keyword-field-header">
-            <label id="keyword-list-label">Tracked keywords</label>
+            <label id="keyword-list-label">
+              {oshi ? "Tracked keywords" : "Aliases / keywords"}
+            </label>
             <button
               className="text-button"
               type="button"
@@ -166,12 +188,16 @@ export function OshiForm({
             </button>
           </div>
           <p className="help-text">
-            Any matching keyword with weight above 0 adds +25 once. Weight 0
-            disables it.
+            {advanced
+              ? "Any matching keyword with weight above 0 adds +25 once. Weight 0 disables it."
+              : "Optional nicknames, alternate names, or words to track."}
           </p>
           <div className="keyword-fields" aria-labelledby="keyword-list-label">
             {keywords.map((keyword, index) => (
-              <div className="keyword-field" key={index}>
+              <div
+                className={`keyword-field ${advanced ? "" : "simple-keyword"}`}
+                key={index}
+              >
                 <input
                   aria-label={`Keyword ${index + 1}`}
                   placeholder="Keyword or alternate name"
@@ -188,24 +214,26 @@ export function OshiForm({
                     )
                   }
                 />
-                <input
-                  aria-label={`Keyword ${index + 1} weight`}
-                  type="number"
-                  min={0}
-                  max={100}
-                  required
-                  step={1}
-                  value={keyword.weight}
-                  onChange={(event) =>
-                    setKeywords((items) =>
-                      items.map((item, i) =>
-                        i === index
-                          ? { ...item, weight: event.target.value }
-                          : item,
-                      ),
-                    )
-                  }
-                />
+                {advanced && (
+                  <input
+                    aria-label={`Keyword ${index + 1} weight`}
+                    type="number"
+                    min={0}
+                    max={100}
+                    required
+                    step={1}
+                    value={keyword.weight}
+                    onChange={(event) =>
+                      setKeywords((items) =>
+                        items.map((item, i) =>
+                          i === index
+                            ? { ...item, weight: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                )}
                 <button
                   type="button"
                   className="close-button"

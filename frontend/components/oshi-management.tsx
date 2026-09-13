@@ -52,10 +52,8 @@ export function OshiTable({
             <th scope="col">Type</th>
             <th scope="col">Priority</th>
             <th scope="col">Keywords</th>
-            <th scope="col">Status</th>
-            <th scope="col">
-              <span className="sr-only">Actions</span>
-            </th>
+            <th scope="col">Active</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -92,7 +90,6 @@ export function OshiTable({
                         key={keyword.id}
                       >
                         {keyword.value}
-                        <small>{keyword.weight}</small>
                       </span>
                     ))
                   ) : (
@@ -119,7 +116,7 @@ export function OshiTable({
               <td>
                 <div className="table-actions">
                   <button
-                    className="text-button"
+                    className="button button-small"
                     onClick={() => edit(item)}
                     aria-label={`Edit ${item.name}`}
                     disabled={busyId !== null}
@@ -127,12 +124,12 @@ export function OshiTable({
                     Edit
                   </button>
                   <button
-                    className="text-button danger-text"
+                    className="button button-small remove-button"
                     onClick={() => remove(item)}
-                    aria-label={`Delete ${item.name}`}
+                    aria-label={`Remove ${item.name}`}
                     disabled={busyId !== null}
                   >
-                    Delete
+                    Remove
                   </button>
                 </div>
               </td>
@@ -170,7 +167,8 @@ const RULES = [
 ];
 
 export function OshiManagement() {
-  const { oshi, stats, loading, error, refresh, openOshiForm } = useAppData();
+  const { oshi, stats, loading, error, refresh, openOshiForm, oshiRemoved } =
+    useAppData();
   const [deleting, setDeleting] = useState<Oshi | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [mutationError, setMutationError] = useState("");
@@ -194,9 +192,9 @@ export function OshiManagement() {
     setMutationError("");
     try {
       await api.deleteOshi(deleting.id);
+      oshiRemoved(deleting.id);
       setNotice(`${deleting.name} removed. Update history retained.`);
       setDeleting(null);
-      refresh();
     } catch (error) {
       setMutationError(describeError(error));
     } finally {
@@ -335,23 +333,24 @@ export function OshiManagement() {
       {deleting && (
         <Modal
           titleId="delete-title"
+          descriptionId="remove-explanation"
           onClose={() => setDeleting(null)}
           busy={busyId !== null}
         >
           <div className="modal-header">
-            <h2 id="delete-title">Remove {deleting.name}?</h2>
+            <h2 id="delete-title">Remove {deleting.name} from My Oshi?</h2>
             <button
               className="close-button"
-              aria-label="Close delete confirmation"
+              aria-label="Close removal confirmation"
               disabled={busyId !== null}
               onClick={() => setDeleting(null)}
             >
               ×
             </button>
           </div>
-          <p className="delete-explanation">
-            This removes the oshi and its keywords. Your updates will stay in
-            your history, with their relevance scores refreshed.
+          <p className="delete-explanation" id="remove-explanation">
+            You&apos;ll stop tracking new updates for this oshi. Existing update
+            history will remain.
           </p>
           {mutationError && (
             <p className="inline-error" role="alert">
@@ -361,6 +360,7 @@ export function OshiManagement() {
           <div className="modal-footer">
             <button
               className="button"
+              data-initial-focus
               disabled={busyId !== null}
               onClick={() => setDeleting(null)}
             >
@@ -371,7 +371,7 @@ export function OshiManagement() {
               disabled={busyId !== null}
               onClick={remove}
             >
-              {busyId !== null ? "Removing…" : "Remove oshi"}
+              {busyId !== null ? "Removing…" : "Remove"}
             </button>
           </div>
         </Modal>

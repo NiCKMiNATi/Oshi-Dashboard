@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // The key identifies a request. Late responses are discarded on change/unmount.
 export function useApiResource<T>(
@@ -25,9 +25,20 @@ export function useApiResource<T>(
     );
     return () => controller.abort();
   }, [key, load]);
+  const updateData = useCallback((update: (data: T) => T) => {
+    setResult((previous) =>
+      previous?.data === undefined
+        ? previous
+        : {
+            ...previous,
+            data: update(previous.data),
+          },
+    );
+  }, []);
   return {
     data: result?.data,
     error: result?.key === key ? result.error : undefined,
     loading: result?.key !== key,
+    updateData,
   };
 }

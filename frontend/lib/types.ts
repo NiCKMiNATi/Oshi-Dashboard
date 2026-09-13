@@ -50,6 +50,15 @@ export interface Oshi extends Omit<OshiInput, "keywords"> {
   created_at: string;
   keywords: Keyword[];
 }
+export interface CatalogCandidate {
+  id: number;
+  name: string;
+  type: OshiType;
+  description: string | null;
+  aliases: string[];
+  provider: string;
+  is_tracked: boolean;
+}
 export interface Update {
   id: number;
   title: string;

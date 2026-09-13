@@ -132,8 +132,16 @@ export function Sidebar() {
         >
           Saved
         </NavItem>
-        <div className="sidebar-divider short" />
-        <NavItem href="/oshi" active={pathname === "/oshi"}>
+      </nav>
+      <nav
+        className="sidebar-section sidebar-management"
+        aria-label="Management"
+      >
+        <p className="eyebrow">Manage</p>
+        <NavItem
+          href={filters.oshi ? `/oshi?oshi=${filters.oshi}` : "/oshi"}
+          active={pathname === "/oshi"}
+        >
           Oshi Management
         </NavItem>
       </nav>

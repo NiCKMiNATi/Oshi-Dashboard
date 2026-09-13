@@ -9,6 +9,8 @@ def test_openapi_exposes_all_requested_routes(client):
         "/api/updates/{update_id}": {"get", "patch"},
         "/api/updates/{update_id}/status": {"patch"},
         "/api/stats": {"get"},
+        "/api/discover": {"get"},
+        "/api/discover/{entity_id}/track": {"post"},
     }
 
 

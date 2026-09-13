@@ -1,4 +1,5 @@
 import type {
+  CatalogCandidate,
   FeedFilters,
   Oshi,
   OshiInput,
@@ -71,6 +72,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  discover: (q: string, signal?: AbortSignal) =>
+    request<CatalogCandidate[]>(`/api/discover?${new URLSearchParams({ q })}`, {
+      signal,
+    }),
+  trackEntity: (id: number) =>
+    request<Oshi>(`/api/discover/${id}/track`, { method: "POST" }),
   getOshi: (signal?: AbortSignal) => request<Oshi[]>("/api/oshi", { signal }),
   getStats: (signal?: AbortSignal) => request<Stats>("/api/stats", { signal }),
   getUpdates: (

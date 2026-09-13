@@ -22,6 +22,25 @@ export function normalize(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase("en-US").trim();
 }
 
+// Explicit fixture metadata supplied by backend/app/seed.py; never infer from titles.
+export function isDemoUpdate(update: Pick<Update, "source">): boolean {
+  return normalize(update.source) === "demo fixture (fictional)";
+}
+
+export function sourceHref(
+  value: string | null | undefined,
+): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:"
+      ? value
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function trackedOshi(update: Update, oshi: Oshi[]): Oshi[] {
   return oshi.filter((item) => update.oshi_ids.includes(item.id));
 }

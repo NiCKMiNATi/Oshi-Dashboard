@@ -5,9 +5,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app.catalog import seed_catalog
 from app.config import resolve_database_path
 from app.database import create_schema, make_engine
-from app.routes import oshi, stats, updates
+from app.routes import discover, oshi, stats, updates
 
 
 def create_app(database_path: Path | str | None = None) -> FastAPI:
@@ -17,6 +18,7 @@ def create_app(database_path: Path | str | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         try:
             create_schema(engine)
+            seed_catalog(engine)
             yield
         finally:
             engine.dispose()
@@ -39,6 +41,7 @@ def create_app(database_path: Path | str | None = None) -> FastAPI:
     app.include_router(oshi.router)
     app.include_router(updates.router)
     app.include_router(stats.router)
+    app.include_router(discover.router)
     return app
 
 

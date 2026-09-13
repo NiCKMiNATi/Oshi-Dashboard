@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  formatDate,
-  matchingKeywords,
-  STATUS_LABELS,
-  trackedOshi,
-} from "@/lib/display";
+import { formatDate, formatTimestamp, trackedOshi } from "@/lib/display";
 import type { Oshi, Update, UpdateStatus } from "@/lib/types";
 import { StatusActions } from "./status-actions";
 
@@ -30,10 +25,22 @@ export function UpdateCard({
   changeStatus: (status: UpdateStatus) => void;
   busy: boolean;
 }) {
-  const keywords = matchingKeywords(update, oshi);
+  // Show one action date. Full event ranges belong in the drawer.
+  const starts =
+    !update.deadline &&
+    ["EVENT", "COLLAB", "MOVIE", "RELEASE"].includes(update.category)
+      ? update.start_date
+      : null;
+  const hasActionable = Boolean(update.deadline || starts || update.location);
+  const priority =
+    update.relevance_score >= 80
+      ? "high"
+      : update.relevance_score >= 50
+        ? "medium"
+        : "low";
   return (
     <article
-      className={`update-card ${update.status === "IGNORED" ? "ignored-card" : ""}`}
+      className={`update-card ${hasActionable ? "has-actionable" : ""} ${update.status === "IGNORED" ? "ignored-card" : ""}`}
       data-update-id={update.id}
     >
       <div className="card-badges">
@@ -43,41 +50,66 @@ export function UpdateCard({
             {item.name}
           </span>
         ))}
-        <span className="priority-score" title="Relevance score out of 100">
-          Priority <strong>{update.relevance_score}</strong>
-        </span>
       </div>
       <h2>
         <button className="card-open" onClick={open} aria-haspopup="dialog">
           {update.title}
         </button>
       </h2>
-      <p className="card-summary">{update.summary || "No summary provided."}</p>
-      <div className="card-metadata">
-        <span>{update.source}</span>
-        <span aria-hidden="true">·</span>
-        {update.published_at ? (
-          <time dateTime={update.published_at}>
-            {formatDate(update.published_at)}
-          </time>
-        ) : (
-          <span>Unpublished date</span>
-        )}
-        {keywords.length > 0 && (
-          <>
-            <span aria-hidden="true">·</span>
-            <span className="card-keywords">
-              {keywords.slice(0, 3).join(" / ")}
-            </span>
-          </>
-        )}
-      </div>
+      {hasActionable && (
+        <dl className="card-actionable" aria-label="Dates and location">
+          {update.deadline && (
+            <div className="card-deadline">
+              <dt>締切</dt>
+              <dd>
+                <time
+                  dateTime={update.deadline}
+                  title={formatTimestamp(update.deadline)}
+                  aria-label={formatTimestamp(update.deadline)}
+                >
+                  {formatDate(
+                    update.deadline,
+                    new Date(update.deadline).getFullYear() !==
+                      new Date().getFullYear(),
+                  )}
+                  {" · "}
+                  {new Intl.DateTimeFormat("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hourCycle: "h23",
+                  }).format(new Date(update.deadline))}
+                </time>
+              </dd>
+            </div>
+          )}
+          {starts && (
+            <div className="card-start">
+              <dt>Starts</dt>
+              <dd>
+                <time dateTime={starts}>{formatDate(starts, true)}</time>
+              </dd>
+            </div>
+          )}
+          {update.location && (
+            <div className="card-location">
+              <dt className="sr-only">Location</dt>
+              <dd>{update.location}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+      {update.summary && <p className="card-summary">{update.summary}</p>}
       <div className="card-footer">
         <StatusActions update={update} onChange={changeStatus} busy={busy} />
-        <span className={`status-label status-${update.status.toLowerCase()}`}>
-          {STATUS_LABELS[update.status]}
-        </span>
       </div>
+      <span
+        className={`priority-score priority-${priority}`}
+        title={`Relevance ${update.relevance_score} out of 100`}
+      >
+        <span className="sr-only">Relevance </span>
+        {priority.toUpperCase()} <strong>{update.relevance_score}</strong>
+        <span className="sr-only"> out of 100</span>
+      </span>
     </article>
   );
 }

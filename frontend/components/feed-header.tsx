@@ -95,41 +95,45 @@ export function CategoryFilters({
       <div className="secondary-filters">
         <label>
           Status
-          <select
-            aria-label="Status"
-            value={filters.status ?? ""}
-            onChange={(event) =>
-              onChange({
-                status: (event.target.value || undefined) as
-                  UpdateStatus | undefined,
-              })
-            }
-          >
-            <option value="">All statuses</option>
-            {STATUSES.map((status) => (
-              <option value={status} key={status}>
-                {STATUS_LABELS[status]}
-              </option>
-            ))}
-          </select>
+          <span className="select-control">
+            <select
+              aria-label="Status"
+              value={filters.status ?? ""}
+              onChange={(event) =>
+                onChange({
+                  status: (event.target.value || undefined) as
+                    UpdateStatus | undefined,
+                })
+              }
+            >
+              <option value="">All statuses</option>
+              {STATUSES.map((status) => (
+                <option value={status} key={status}>
+                  {STATUS_LABELS[status]}
+                </option>
+              ))}
+            </select>
+          </span>
         </label>
         <label>
           Minimum score
-          <select
-            aria-label="Minimum score"
-            value={filters.min_score ?? 0}
-            onChange={(event) =>
-              onChange({ min_score: Number(event.target.value) || undefined })
-            }
-          >
-            {[...new Set([0, 40, 65, 80, 100, filters.min_score ?? 0])]
-              .sort((a, b) => a - b)
-              .map((score) => (
-                <option value={score} key={score}>
-                  {score === 0 ? "Any priority" : `${score}+`}
-                </option>
-              ))}
-          </select>
+          <span className="select-control">
+            <select
+              aria-label="Minimum score"
+              value={filters.min_score ?? 0}
+              onChange={(event) =>
+                onChange({ min_score: Number(event.target.value) || undefined })
+              }
+            >
+              {[...new Set([0, 40, 65, 80, 100, filters.min_score ?? 0])]
+                .sort((a, b) => a - b)
+                .map((score) => (
+                  <option value={score} key={score}>
+                    {score === 0 ? "Any priority" : `${score}+`}
+                  </option>
+                ))}
+            </select>
+          </span>
         </label>
       </div>
     </div>

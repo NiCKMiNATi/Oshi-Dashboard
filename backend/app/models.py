@@ -163,3 +163,42 @@ class UpdateOshi(Base):
         primary_key=True,
         index=True,
     )
+
+
+class CatalogEntity(Base):
+    __tablename__ = "catalog_entities"
+    __table_args__ = (UniqueConstraint("provider", "external_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    type: Mapped[OshiType] = mapped_column(enum_column(OshiType))
+    provider: Mapped[str] = mapped_column(String(100))
+    external_id: Mapped[str | None] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+    aliases: Mapped[list["EntityAlias"]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True, order_by="EntityAlias.id"
+    )
+
+
+class EntityAlias(Base):
+    __tablename__ = "entity_aliases"
+    __table_args__ = (UniqueConstraint("entity_id", "normalized_alias"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entity_id: Mapped[int] = mapped_column(
+        ForeignKey("catalog_entities.id", ondelete="CASCADE"), index=True
+    )
+    alias: Mapped[str] = mapped_column(String(200))
+    normalized_alias: Mapped[str] = mapped_column(String(200), index=True)
+
+
+class CatalogTracking(Base):
+    """Optional identity link; deleting an Oshi removes only this link, not the catalog."""
+
+    __tablename__ = "catalog_tracking"
+
+    entity_id: Mapped[int] = mapped_column(
+        ForeignKey("catalog_entities.id", ondelete="CASCADE"), primary_key=True
+    )
+    oshi_id: Mapped[int] = mapped_column(ForeignKey("oshi.id", ondelete="CASCADE"), unique=True)

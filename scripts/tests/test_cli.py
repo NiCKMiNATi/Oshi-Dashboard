@@ -5,8 +5,11 @@ import json
 import os
 import shutil
 import signal
+import socket
+import socketserver
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from unittest.mock import Mock
@@ -43,6 +46,112 @@ def state_for(dashboard, pid=999999):
         "members": [member],
         "environment": {},
     }
+
+
+def test_cli_starts_without_macos_proxy_support():
+    # A fresh interpreter catches imports that pytest or its plugins may have cached.
+    code = """
+import runpy
+import sys
+
+class BlockProxyImport:
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == '_scproxy':
+            raise AssertionError('CLI startup must not load macOS proxy support')
+
+sys.meta_path.insert(0, BlockProxyImport())
+sys.argv = [sys.argv[1], '--help']
+runpy.run_path(sys.argv[0], run_name='__main__')
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", code, str(Path(cli.__file__))],
+        capture_output=True,
+        text=True,
+        timeout=5,
+        check=True,
+    )
+    assert "status" in result.stdout
+
+
+@pytest.fixture
+def probe_server(monkeypatch):
+    class Handler(socketserver.StreamRequestHandler):
+        def handle(self):
+            self.server.requests.append(self.rfile.readline())
+            while self.rfile.readline() not in (b"\r\n", b"\n", b""):
+                pass
+            self.wfile.write(self.server.response)
+
+    with socketserver.TCPServer(("127.0.0.1", 0), Handler) as server:
+        server.requests = []
+        server.response = b""
+        monkeypatch.setattr(cli, "SERVICES", dict.fromkeys(cli.SERVICES, server.server_address[1]))
+        thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01})
+        thread.start()
+        try:
+            yield server
+        finally:
+            server.shutdown()
+            thread.join(timeout=3)
+
+
+@pytest.mark.parametrize(
+    ("service", "response", "ready"),
+    [
+        (
+            "backend",
+            b'HTTP/1.0 200 OK\r\n\r\n{"total_oshi":0,"total_updates":0,"by_status":{}}',
+            True,
+        ),
+        ("frontend", b"HTTP/1.0 200 OK\r\n\r\n<title>Oshi Dashboard</title>", True),
+        ("backend", b"HTTP/1.0 200 OK\r\n\r\nnot json", False),
+        ("backend", b"HTTP/1.0 200 OK\r\n\r\n[]", False),
+        ("backend", b'HTTP/1.0 200 OK\r\n\r\n{"total_oshi":0}', False),
+        ("frontend", b"HTTP/1.0 200 OK\r\n\r\n<title>Unrelated app</title>", False),
+        ("frontend", b"HTTP/1.0 503 Unavailable\r\n\r\n<title>Oshi Dashboard</title>", False),
+        (
+            "frontend",
+            b"HTTP/1.0 302 Found\r\nLocation: /redirected\r\n\r\n<title>Oshi Dashboard</title>",
+            False,
+        ),
+        ("frontend", b"not an HTTP response\r\n\r\n", False),
+        ("frontend", b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\ninvalid\r\n", False),
+    ],
+)
+def test_http_readiness_uses_direct_local_responses(
+    probe_server, monkeypatch, service, response, ready
+):
+    # Bad proxy settings must never affect localhost readiness.
+    for key in ("http_proxy", "https_proxy", "all_proxy", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"):
+        monkeypatch.setenv(key, "http://127.0.0.1:1")
+    for key in ("no_proxy", "NO_PROXY"):
+        monkeypatch.setenv(key, "")
+    probe_server.response = response
+    assert cli.http_ready(service) is ready
+    path = "/api/stats" if service == "backend" else "/"
+    assert probe_server.requests == [f"GET {path} HTTP/1.1\r\n".encode()]
+
+
+def test_http_readiness_handles_refused_connection(monkeypatch):
+    with socket.socket() as unavailable:
+        unavailable.bind(("127.0.0.1", 0))
+        monkeypatch.setitem(cli.SERVICES, "backend", unavailable.getsockname()[1])
+        assert not cli.http_ready("backend")
+
+
+def test_http_readiness_times_out_without_a_response(monkeypatch):
+    with socket.socket() as silent:
+        silent.bind(("127.0.0.1", 0))
+        silent.listen()
+        monkeypatch.setitem(cli.SERVICES, "backend", silent.getsockname()[1])
+        started = time.monotonic()
+        assert not cli.http_ready("backend")
+        assert time.monotonic() - started < 4
+        connection, _ = silent.accept()
+        with connection:
+            connection.settimeout(1)
+            while connection.recv(4096):
+                pass  # The timed-out client must close its connection.
 
 
 @pytest.mark.parametrize("content", ["not json", "[]", '{"version": 1}'])

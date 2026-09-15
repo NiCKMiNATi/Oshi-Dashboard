@@ -36,15 +36,15 @@ The installer creates `~/.local/bin/oshi` without sudo. If that directory is mis
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-The installer does not edit shell startup files. All six commands work from any directory, including paths with spaces:
+The installer does not edit shell startup files. All six actions work from any directory, including paths with spaces. English and Japanese command names are interchangeable:
 
 | Command | Behavior |
 | --- | --- |
-| `oshi kaishi` | Start both services detached, wait for HTTP readiness, and print URLs. Already healthy CLI-owned services are reused. |
-| `oshi shuuryou` | Gracefully stop CLI-owned process groups. Already stopped is a clean no-op. |
-| `oshi saikidou` | Stop, start, and verify both services. |
+| `oshi start` / `oshi kaishi` | Start both services detached, wait for HTTP readiness, and print URLs. Already healthy CLI-owned services are reused. |
+| `oshi end` / `oshi stop` / `oshi shuuryou` | Gracefully stop CLI-owned process groups. Already stopped is a clean no-op. |
+| `oshi restart` / `oshi saikidou` | Stop, start, and verify both services. |
 | `oshi status` | Show actual process/HTTP status, ownership, PIDs, URLs, and SQLite existence; clean stale state. |
-| `oshi hiraku` | Open `http://localhost:3000` with macOS `open` when ready. Otherwise explain how to start. |
+| `oshi open` / `oshi hiraku` | Open `http://localhost:3000` with macOS `open` when ready. Otherwise explain how to start. |
 | `oshi test` | Run backend and CLI tests, frontend lint/typecheck, and the existing browser suite. Temporarily stop CLI-owned services, then restore their previous running state. |
 
 The API uses port **8000** and the frontend **3000**, both bound to `127.0.0.1`. Closing the launching terminal leaves CLI-started services running. Services started by the foreground scripts or another tool are reported as unmanaged; the CLI will not adopt or stop them. Stop those from their original terminal before using `kaishi`, `saikidou`, or `test`.

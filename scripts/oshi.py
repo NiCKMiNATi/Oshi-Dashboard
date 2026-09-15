@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import fcntl
+import http.client
 import json
 import os
 import shlex
@@ -14,8 +15,6 @@ import signal
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
 import uuid
 from pathlib import Path
 
@@ -25,6 +24,19 @@ LABELS = {"backend": "API", "frontend": "Frontend"}
 START_TIMEOUT = 45
 STOP_TIMEOUT = 10
 WRAPPER_MARKER = "# Oshi Dashboard CLI wrapper v1"
+COMMANDS = {
+    "start": "start",
+    "kaishi": "start",
+    "end": "stop",
+    "stop": "stop",
+    "shuuryou": "stop",
+    "restart": "restart",
+    "saikidou": "restart",
+    "status": "status",
+    "open": "open",
+    "hiraku": "open",
+    "test": "test",
+}
 
 
 class CliError(Exception):
@@ -93,20 +105,24 @@ def listener_pids(port: int) -> set[int]:
 
 def http_ready(service: str) -> bool:
     path = "/api/stats" if service == "backend" else "/"
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    # Direct loopback probes avoid urllib.request's macOS _scproxy import entirely.
+    connection = http.client.HTTPConnection("127.0.0.1", SERVICES[service], timeout=2)
     try:
-        with opener.open(f"http://127.0.0.1:{SERVICES[service]}{path}", timeout=2) as response:
-            body = response.read(512_000)
+        connection.request("GET", path)
+        with connection.getresponse() as response:
             if response.status != 200:
                 return False
+            body = response.read(512_000)
             if service == "backend":
                 data = json.loads(body)
                 return isinstance(data, dict) and all(
                     key in data for key in ("total_oshi", "total_updates", "by_status")
                 )
             return b"<title>Oshi Dashboard</title>" in body
-    except (OSError, urllib.error.URLError, ValueError):
+    except (OSError, http.client.HTTPException, ValueError):
         return False
+    finally:
+        connection.close()
 
 
 def write_json(path: Path, value: dict) -> None:
@@ -351,7 +367,7 @@ class Dashboard:
             if members and not self.ready(service, state):
                 raise CliError(
                     f"{LABELS[service]} has an owned process but is not ready. "
-                    "Inspect its log or run oshi saikidou."
+                    "Inspect its log or run oshi restart (oshi saikidou)."
                 )
             if not members:
                 missing.append(service)
@@ -419,7 +435,7 @@ class Dashboard:
 
     def open_browser(self) -> None:
         if not all(http_ready(service) for service in SERVICES):
-            raise CliError("Dashboard is not ready. Run oshi kaishi first.")
+            raise CliError("Dashboard is not ready. Run oshi start (oshi kaishi) first.")
         subprocess.run(["/usr/bin/open", "http://localhost:3000"], check=True)
 
     def tests(self) -> int:
@@ -587,28 +603,34 @@ def main(argv: list[str] | None = None) -> int:
         return supervise(argv[1], argv[2])
     parser = argparse.ArgumentParser(description="OSHI Dashboard v0.1 — local service control")
     parser.add_argument(
-        "command", choices=("kaishi", "shuuryou", "saikidou", "status", "hiraku", "test")
+        "command",
+        choices=COMMANDS,
+        help=(
+            "start/kaishi: start services; end/stop/shuuryou: stop services; "
+            "restart/saikidou: restart services; status: inspect services; "
+            "open/hiraku: open dashboard; test: run checks"
+        ),
     )
-    args = parser.parse_args(argv)
+    command = COMMANDS[parser.parse_args(argv).command]
     dashboard = Dashboard()
     with dashboard.lock():
-        if args.command == "status":
+        if command == "status":
             dashboard.status()
-        elif args.command == "hiraku":
+        elif command == "open":
             dashboard.open_browser()
-        elif args.command == "test":
+        elif command == "test":
             return dashboard.tests()
-        elif args.command == "shuuryou":
+        elif command == "stop":
             dashboard.stop()
             dashboard.status()
-            print("\n推し活、終了。")
+            print("\nOshi stopped. 推し活、終了。")
         else:
-            if args.command == "saikidou":
+            if command == "restart":
                 dashboard.ensure_no_external()
                 dashboard.stop()
             dashboard.start()
             dashboard.status()
-            print("\n推し活、開始。")
+            print("\nOshi started. 推し活、開始。")
     return 0
 
 

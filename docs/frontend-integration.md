@@ -1,5 +1,10 @@
 # Frontend integration
 
+Manual `oshi fetch` ingestion now creates ordinary backend Updates. The existing UI
+needs no ingestion-specific route or API change: start the dashboard or use Refresh to
+load them. Source configuration is local-file based; there is no source-management UI
+or scheduled fetching. See [ingestion.md](ingestion.md).
+
 The dark-only UI uses Next.js 16, React 19, TypeScript, App Router, and plain CSS. `/` is the dashboard; `/oshi` manages your following. The FastAPI contract is unchanged.
 
 ## Running locally

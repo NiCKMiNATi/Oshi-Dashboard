@@ -202,3 +202,34 @@ class CatalogTracking(Base):
         ForeignKey("catalog_entities.id", ondelete="CASCADE"), primary_key=True
     )
     oshi_id: Mapped[int] = mapped_column(ForeignKey("oshi.id", ondelete="CASCADE"), unique=True)
+
+
+class SourceState(Base):
+    __tablename__ = "source_states"
+    __table_args__ = (CheckConstraint("failure_count >= 0"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_key: Mapped[str] = mapped_column(String(100), unique=True)
+    last_attempt_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    last_success_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    failure_count: Mapped[int] = mapped_column(Integer, default=0)
+    etag: Mapped[str | None] = mapped_column(Text)
+    last_modified: Mapped[str | None] = mapped_column(Text)
+    # Invalidate HTTP validators when source configuration or tracked identities change.
+    request_key: Mapped[str | None] = mapped_column(String(64))
+
+
+class IngestedRecord(Base):
+    __tablename__ = "ingested_records"
+    __table_args__ = (UniqueConstraint("source_key", "external_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_key: Mapped[str] = mapped_column(String(100), index=True)
+    external_key: Mapped[str | None] = mapped_column(Text)
+    source_url: Mapped[str] = mapped_column(String(2048), index=True)
+    content_hash: Mapped[str] = mapped_column(String(64), index=True)
+    update_id: Mapped[int | None] = mapped_column(
+        ForeignKey("updates.id", ondelete="SET NULL"), index=True
+    )
+    first_seen_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    last_seen_at: Mapped[datetime] = mapped_column(UTCDateTime())

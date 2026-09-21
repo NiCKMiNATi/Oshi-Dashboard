@@ -24,3 +24,4 @@ data/*
 test-results/
 playwright-report/
 .runtime/
+local/

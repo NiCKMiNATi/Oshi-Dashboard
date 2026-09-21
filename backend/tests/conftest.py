@@ -1,3 +1,6 @@
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -50,3 +53,36 @@ def make_update(client):
         return response.json()
 
     return create
+
+
+@pytest.fixture
+def rss_server():
+    """Local HTTP feed fixture; never contacts a real provider or dashboard port."""
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.server.requests.append((self.path, dict(self.headers)))
+            status, headers, body = self.server.responses.get(self.path, (404, {}, b""))
+            if self.headers.get("If-None-Match") == headers.get("ETag") and "ETag" in headers:
+                status, body = 304, b""
+            self.send_response(status)
+            for key, value in headers.items():
+                self.send_header(key, value)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    with ThreadingHTTPServer(("127.0.0.1", 0), Handler) as server:
+        server.requests = []
+        server.responses = {}
+        server.url = f"http://127.0.0.1:{server.server_port}"
+        thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01})
+        thread.start()
+        try:
+            yield server
+        finally:
+            server.shutdown()
+            thread.join(timeout=3)

@@ -348,3 +348,49 @@ def test_stubborn_owned_process_escalates_after_grace_period(dashboard, monkeypa
         assert not dashboard.state_path("backend").exists()
     finally:
         dashboard.stop_service("backend")
+
+
+def test_fetch_uses_only_backend_python_and_forwards_flags(dashboard, monkeypatch):
+    python = dashboard.root / "backend/.venv/bin/python"
+    python.parent.mkdir(parents=True)
+    python.touch()
+    child = Mock()
+    child.wait.return_value = 1
+    launch = Mock(return_value=child)
+    monkeypatch.setattr(cli.subprocess, "Popen", launch)
+    monkeypatch.setattr(dashboard, "check_dependencies", Mock(side_effect=AssertionError))
+    monkeypatch.setattr(dashboard, "ensure_no_external", Mock(side_effect=AssertionError))
+    assert dashboard.fetch(dry_run=True, source="anime") == 1
+    launch.assert_called_once_with(
+        [str(python), "-m", "app.ingestion", "--dry-run", "--source", "anime"],
+        cwd=dashboard.root,
+    )
+
+
+@pytest.mark.parametrize(
+    "args", [["status", "--dry-run"], ["start", "--source", "rss"], ["fetch", "--source", ""]]
+)
+def test_fetch_flags_require_fetch_and_a_nonempty_source(args):
+    with pytest.raises(SystemExit) as error:
+        cli.main(args)
+    assert error.value.code == 2
+
+
+def test_cancelled_fetch_cleans_its_child_even_if_interrupt_is_ignored(dashboard, monkeypatch):
+    python = dashboard.root / "backend/.venv/bin/python"
+    python.parent.mkdir(parents=True)
+    python.touch()
+    child = Mock()
+    child.poll.return_value = None
+    child.wait.side_effect = [
+        KeyboardInterrupt(),
+        subprocess.TimeoutExpired("fetch", 15),
+        subprocess.TimeoutExpired("fetch", 5),
+        0,
+    ]
+    monkeypatch.setattr(cli.subprocess, "Popen", Mock(return_value=child))
+    with pytest.raises(KeyboardInterrupt):
+        dashboard.fetch()
+    child.send_signal.assert_called_once_with(signal.SIGINT)
+    child.terminate.assert_called_once()
+    child.kill.assert_called_once()

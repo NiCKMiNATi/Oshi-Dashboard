@@ -36,7 +36,7 @@ The installer creates `~/.local/bin/oshi` without sudo. If that directory is mis
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-The installer does not edit shell startup files. All six actions work from any directory, including paths with spaces. English and Japanese command names are interchangeable:
+The installer does not edit shell startup files. All commands work from any directory, including paths with spaces. Existing English and Japanese command names are interchangeable:
 
 | Command | Behavior |
 | --- | --- |
@@ -46,6 +46,7 @@ The installer does not edit shell startup files. All six actions work from any d
 | `oshi status` | Show actual process/HTTP status, ownership, PIDs, URLs, and SQLite existence; clean stale state. |
 | `oshi open` / `oshi hiraku` | Open `http://localhost:3000` with macOS `open` when ready. Otherwise explain how to start. |
 | `oshi test` | Run backend and CLI tests, frontend lint/typecheck, and the existing browser suite. Temporarily stop CLI-owned services, then restore their previous running state. |
+| `oshi fetch [--dry-run] [--source KEY]` | Manually ingest configured RSS/Atom feeds for active followed oshi. Works with both services stopped. |
 
 The API uses port **8000** and the frontend **3000**, both bound to `127.0.0.1`. Closing the launching terminal leaves CLI-started services running. Services started by the foreground scripts or another tool are reported as unmanaged; the CLI will not adopt or stop them. Stop those from their original terminal before using `kaishi`, `saikidou`, or `test`.
 
@@ -54,6 +55,32 @@ Logs append to `.runtime/backend.log` and `.runtime/frontend.log` in this reposi
 To uninstall, run `oshi shuuryou`, then `rm "$HOME/.local/bin/oshi"`. Your source, database, and logs remain. Reinstall by rerunning `./scripts/install-cli.sh`. If the repository moves, stop first, move it, rerun `./scripts/setup.sh` to repair path-dependent dependencies, then rerun `./scripts/install-cli.sh` to update the wrapper's absolute project path.
 
 Troubleshooting: for `command not found`, apply the PATH line above (or use `~/.local/bin/oshi`). For startup failures, read the two logs and run `oshi status`; occupied ports require stopping their original launcher. Missing dependencies require `./scripts/setup.sh`. Browser checks require installed Google Chrome. Do not delete runtime state while services are alive. Detailed lifecycle behavior and recovery are in [the CLI guide](docs/local-cli.md).
+
+## Manual RSS/Atom fetching
+
+`oshi fetch` imports matching feed entries into the existing dashboard without requiring
+FastAPI or Next.js to be running. Run `./scripts/setup.sh` after this update to install
+the feed parsing dependency. Configure your own feeds in ignored `local/sources.json`:
+
+```sh
+mkdir -p local
+cp config/sources.example.json local/sources.json
+# Edit the file: replace the example URL and enable your source.
+oshi fetch --dry-run
+oshi fetch
+```
+
+Use `oshi fetch --source KEY` to select one source. `OSHI_SOURCES_PATH` overrides the
+configuration path, and `OSHI_DATABASE_PATH` selects the database. Missing configuration
+prints a clear message. No real sources are enabled by default.
+
+Only active followed oshi receive new updates. Matching uses names, enabled keywords,
+and linked catalog aliases. Repeated fetches deduplicate imported items and preserve
+existing update content and status. Dry-run uses a temporary database copy and leaves
+personal schema, content, and source state unchanged. Refresh or start the dashboard to
+see imported updates. This is manual fetching; no scheduled/background fetching exists.
+Configuration, adapter contracts, matching, dedupe, and limitations are in
+[the ingestion guide](docs/ingestion.md).
 
 ## What is included
 
@@ -66,6 +93,7 @@ Troubleshooting: for `command not found`, apply the PATH line above (or use `~/.
 - A persistent desktop sidebar, category/oshi/status/score filters, client-side search, update cards, and an accessible detail drawer.
 - Persistent status actions and oshi create/edit/pause/delete forms, feed stats, and documented scoring rules.
 - Local discovery by canonical name or alias, one-click tracking, and manual creation for anything outside the catalog.
+- Manual RSS/Atom ingestion with source state, provenance, deterministic active-oshi matching, dedupe, and an `oshi fetch` command that runs without dashboard services.
 - Loading, empty, request-error, and backend-offline states with retry; no substitute network data.
 
 Demo records use `[DEMO]` titles, explicit fictional notices, and `example.invalid` URLs. They are realistic fixtures, not verified announcements. Their detail drawer shows a disabled **Demo source** button so fictional URLs never open. Real updates keep their external source links. The Ryujin fixture assumes ITZY's Ryujin. Seeding again adds missing fixtures while preserving existing records and user edits; it does not refresh dates. Startup never seeds personal following or updates.
@@ -125,6 +153,8 @@ Tests create temporary databases and never use the personal database. Browser in
 - [UI refinement and verification](docs/ui-refinement-1-report.md)
 - [Dashboard simplification, removal, and source-link verification](docs/usability-refinement-2-report.md)
 - [Local discovery and tracking verification](docs/discover-oshi-1-report.md)
+- [Manual ingestion architecture and configuration](docs/ingestion.md)
+- [Ingestion foundation verification](docs/ingestion-foundation-1-report.md)
 
 The UI follows the accessible [Figma dashboard](https://www.figma.com/design/dS4aiNmBAUBURfRpKK6dgk?node-id=2-2) and [management frame](https://www.figma.com/design/dS4aiNmBAUBURfRpKK6dgk?node-id=2-116), with the supplied dark tokens. The connector exposes these under “v0.1 Wireframes”; a separate “v0.1 Prototype” page was not available during implementation.
 

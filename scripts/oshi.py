@@ -36,6 +36,7 @@ COMMANDS = {
     "open": "open",
     "hiraku": "open",
     "test": "test",
+    "fetch": "fetch",
 }
 
 
@@ -268,6 +269,35 @@ class Dashboard:
             raise CliError(
                 "Node.js/npm are missing from PATH. Install Node.js and rerun install-cli.sh."
             )
+
+    def fetch(self, *, dry_run: bool = False, source: str | None = None) -> int:
+        python = self.root / "backend/.venv/bin/python"
+        if not python.is_file():
+            raise CliError(f"Missing {python}. Run scripts/setup.sh first.")
+        command = [str(python), "-m", "app.ingestion"]
+        if dry_run:
+            command.append("--dry-run")
+        if source:
+            command.extend(["--source", source])
+        # No service probes, Node dependency, or lifecycle changes. The child shares
+        # the terminal so Ctrl+C rolls back its active database transaction normally.
+        child = subprocess.Popen(command, cwd=self.root)
+        try:
+            return child.wait()
+        except KeyboardInterrupt:
+            with finish_cleanup():
+                if child.poll() is None:
+                    child.send_signal(signal.SIGINT)
+                try:
+                    child.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    child.terminate()
+                    try:
+                        child.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        child.kill()
+                        child.wait(timeout=5)
+            raise
 
     def command(self, service: str) -> list[str]:
         if service == "backend":
@@ -608,13 +638,24 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "start/kaishi: start services; end/stop/shuuryou: stop services; "
             "restart/saikidou: restart services; status: inspect services; "
-            "open/hiraku: open dashboard; test: run checks"
+            "open/hiraku: open dashboard; test: run checks; fetch: fetch configured sources"
         ),
     )
-    command = COMMANDS[parser.parse_args(argv).command]
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Preview fetch without database changes"
+    )
+    parser.add_argument("--source", metavar="KEY", help="Fetch only this enabled source")
+    args = parser.parse_args(argv)
+    if args.source is not None and not args.source.strip():
+        parser.error("--source requires a nonempty source key")
+    command = COMMANDS[args.command]
+    if command != "fetch" and (args.dry_run or args.source is not None):
+        parser.error("--dry-run and --source are only supported by fetch")
     dashboard = Dashboard()
     with dashboard.lock():
-        if command == "status":
+        if command == "fetch":
+            return dashboard.fetch(dry_run=args.dry_run, source=args.source)
+        elif command == "status":
             dashboard.status()
         elif command == "open":
             dashboard.open_browser()

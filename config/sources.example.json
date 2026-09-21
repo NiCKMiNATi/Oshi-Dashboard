@@ -1,0 +1,11 @@
+{
+  "sources": [
+    {
+      "key": "example-anime",
+      "type": "rss",
+      "name": "Example anime publisher",
+      "url": "https://example.invalid/feed.xml",
+      "enabled": false
+    }
+  ]
+}

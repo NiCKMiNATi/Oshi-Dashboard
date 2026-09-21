@@ -243,4 +243,6 @@ def test_additive_startup_preserves_original_tables_and_rows(tmp_path):
                 "catalog_entities",
                 "entity_aliases",
                 "catalog_tracking",
+                "source_states",
+                "ingested_records",
             }

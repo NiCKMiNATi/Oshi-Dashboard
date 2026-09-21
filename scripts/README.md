@@ -8,6 +8,7 @@ Run these from the repository root. Paths are quoted and scripts also work when 
 - `./scripts/test-backend.sh`: isolated backend tests; extra pytest arguments are forwarded.
 - `./scripts/test-backend.sh scripts/tests`: backend plus CLI lifecycle/safety tests using the existing pytest configuration.
 - `./scripts/install-cli.sh`: install or update the `oshi` wrapper in `~/.local/bin`; prints a PATH instruction if needed. `PYTHON_BIN` selects Python 3.12+; optional `OSHI_BIN_DIR` selects another user-owned installation directory.
+- `oshi fetch [--dry-run] [--source KEY]`: manual RSS/Atom ingestion using backend dependencies only, even with both dashboard services stopped. Configure ignored `local/sources.json`; see [ingestion](../docs/ingestion.md).
 - Frontend: `npm --prefix frontend run dev`; stop with Ctrl-C.
 - `npm --prefix frontend run test:integration`: Playwright browser checks with Google Chrome. Requires free ports 3000/8000. It launches both servers and uses `integration-backend.py` to create a disposable seeded SQLite database.
 

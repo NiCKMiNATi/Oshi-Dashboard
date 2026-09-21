@@ -1,6 +1,6 @@
 # Local CLI
 
-`scripts/oshi.py` implements the six local macOS commands using only Python 3.12+ standard-library modules and the native `ps`, `lsof`, and `open` utilities. The application keeps its existing Python/npm dependencies. Installation and command examples are in the [README](../README.md#local-cli-for-macos).
+`scripts/oshi.py` implements local macOS commands using only Python 3.12+ standard-library modules and the native `ps`, `lsof`, and `open` utilities. `fetch` delegates to the backend environment, which includes the RSS/Atom parser. Installation and command examples are in the [README](../README.md#local-cli-for-macos).
 
 ## Command names
 
@@ -14,6 +14,14 @@ English and Japanese names run the same action, with the same command lock, proc
 | Inspect status | `oshi status` | — |
 | Open dashboard | `oshi open` | `oshi hiraku` |
 | Run checks | `oshi test` | — |
+| Fetch configured feeds | `oshi fetch` | — |
+
+`oshi fetch [--dry-run] [--source KEY]` runs `backend/.venv/bin/python -m app.ingestion`
+under the existing command lock. It needs only backend dependencies, inherits database
+and source-config environment settings, and does not inspect or change running services.
+It works when both servers are stopped. Fetch-specific flags are rejected for other
+commands. The portable ingestion entry point contains no macOS process or scheduler code.
+See [ingestion.md](ingestion.md) for configuration, output, and dry-run behavior.
 
 ## Installation and paths
 

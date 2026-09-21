@@ -1,6 +1,7 @@
 import json
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -42,7 +43,7 @@ def adapter(*items, **changes):
 
 
 def snapshot(path):
-    with sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True) as connection:
+    with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as connection:
         return "\n".join(connection.iterdump())
 
 
@@ -293,6 +294,35 @@ def test_dry_run_does_not_create_a_missing_database(tmp_path):
     assert not path.parent.exists()
 
 
+@pytest.mark.parametrize("fail", [False, True])
+def test_backup_closes_connections_on_success_and_failure(database, tmp_path, monkeypatch, fail):
+    connect = sqlite3.connect
+    connections = []
+
+    class BackupConnection(sqlite3.Connection):
+        def backup(self, target, **kwargs):
+            if fail:
+                raise sqlite3.OperationalError("Backup failed")
+            return super().backup(target, **kwargs)
+
+    def capture_connection(*args, **kwargs):
+        connection = connect(*args, **kwargs, factory=BackupConnection)
+        connections.append(connection)
+        return connection
+
+    monkeypatch.setattr(pipeline.sqlite3, "connect", capture_connection)
+    destination = tmp_path / "backup.db"
+    if fail:
+        with pytest.raises(sqlite3.OperationalError, match="Backup failed"):
+            pipeline.copy_database(database, destination)
+    else:
+        pipeline.copy_database(database, destination)
+    assert len(connections) == 2
+    for connection in connections:
+        with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+            connection.execute("SELECT 1")
+
+
 def test_old_schema_and_existing_rows_unchanged(database, application, make_oshi, make_update):
     make_oshi()
     make_update(title="User-edited historical content", status="GOING")
@@ -305,7 +335,7 @@ def test_old_schema_and_existing_rows_unchanged(database, application, make_oshi
     assert snapshot(database) == before
     assert "source_states" not in inspect(engine).get_table_names()
     run_fetch(database, [adapter(item(title="Unrelated article", summary=""))])
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection:
         new_lines = [
             line
             for line in connection.iterdump()

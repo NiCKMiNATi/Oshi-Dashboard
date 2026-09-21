@@ -16,6 +16,8 @@ from unittest.mock import Mock
 
 import pytest
 
+pytest.importorskip("fcntl", reason="macOS service ownership and locking require POSIX")
+
 SPEC = importlib.util.spec_from_file_location("oshi_cli", Path(__file__).parents[1] / "oshi.py")
 cli = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(cli)

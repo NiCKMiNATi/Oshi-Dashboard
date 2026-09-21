@@ -9,6 +9,11 @@ The dark-only UI uses Next.js 16, React 19, TypeScript, App Router, and plain CS
 
 ## Running locally
 
+On Windows, first run `.\scripts\setup.ps1` and use the backend command in the
+[Windows quick start](../README.md#windows-powershell). Frontend npm commands work
+on both platforms; `cross-env` sets the telemetry flag without Unix shell syntax.
+The browser configuration selects the platform's backend virtual environment.
+
 ```sh
 ./scripts/dev-backend.sh
 # In another terminal:

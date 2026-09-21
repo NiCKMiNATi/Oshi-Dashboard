@@ -4,21 +4,34 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+from contextlib import closing
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
 
 
-def test_real_cli_fetch_without_services_then_api_reads_updates(tmp_path, rss_server):
+@pytest.mark.parametrize(
+    "entrypoint",
+    [
+        "backend",
+        pytest.param(
+            "macos-cli",
+            marks=pytest.mark.skipif(os.name == "nt", reason="The service CLI requires POSIX"),
+        ),
+    ],
+)
+def test_real_cli_fetch_without_services_then_api_reads_updates(tmp_path, rss_server, entrypoint):
     # An isolated CLI installation has no service state, frontend, Node, or running API.
     root = tmp_path / "Oshi Dashboard"
     (root / "scripts").mkdir(parents=True)
     (root / "backend").mkdir()
-    (root / "backend/.venv").symlink_to(sys.prefix, target_is_directory=True)
     script = root / "scripts/oshi.py"
-    shutil.copyfile(Path(__file__).parents[2] / "scripts/oshi.py", script)
+    if entrypoint == "macos-cli":
+        (root / "backend/.venv").symlink_to(sys.prefix, target_is_directory=True)
+        shutil.copyfile(Path(__file__).parents[2] / "scripts/oshi.py", script)
     database = root / "personal.db"
     with TestClient(create_app(database), base_url="http://127.0.0.1") as client:
         tracked = client.post("/api/oshi", json={"name": "原神", "type": "GAME"}).json()
@@ -48,13 +61,20 @@ def test_real_cli_fetch_without_services_then_api_reads_updates(tmp_path, rss_se
     )
     environment = {
         **os.environ,
+        # Redirected console output must also work with legacy Windows encodings.
+        "PYTHONIOENCODING": "ascii",
         "OSHI_DATABASE_PATH": str(database),
         "OSHI_SOURCES_PATH": str(sources),
     }
 
     def fetch(*flags):
+        command = (
+            [sys.executable, str(script), "fetch"]
+            if entrypoint == "macos-cli"
+            else [sys.executable, "-m", "app.ingestion"]
+        )
         return subprocess.run(
-            [sys.executable, str(script), "fetch", "--source", "selected", *flags],
+            [*command, "--source", "selected", *flags],
             cwd=tmp_path,
             env=environment,
             text=True,
@@ -83,6 +103,6 @@ def test_real_cli_fetch_without_services_then_api_reads_updates(tmp_path, rss_se
         assert updates[0]["oshi_ids"] == [tracked["id"]]
         assert updates[0]["relevance_score"] == 40
         assert updates[0]["status"] == "NEW"
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection:
         assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []

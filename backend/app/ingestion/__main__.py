@@ -22,7 +22,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.source is not None and not args.source.strip():
         parser.error("--source requires a nonempty source key")
     started = time.monotonic()
-    print("OSHI Fetch" + (" (dry run — no database changes)" if args.dry_run else ""), flush=True)
+    print("OSHI Fetch" + (" (dry run - no database changes)" if args.dry_run else ""), flush=True)
     try:
         path = config_path()
         sources = load_sources(path, args.source)

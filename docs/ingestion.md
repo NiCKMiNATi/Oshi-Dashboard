@@ -68,6 +68,12 @@ The platform-independent backend entry point is also available directly:
 backend/.venv/bin/python -m app.ingestion --dry-run
 ```
 
+On Windows after `.\scripts\setup.ps1`, use:
+
+```powershell
+.\backend\.venv\Scripts\python.exe -m app.ingestion --dry-run
+```
+
 The macOS `oshi` wrapper retains its existing command lock and lifecycle behavior. No
 shell profile change or wrapper reinstall is needed for an already installed command.
 
@@ -83,6 +89,9 @@ Dry-run makes a temporary SQLite copy through a read-only connection and execute
 same pipeline against the copy. This includes schema initialization, source state, dedupe
 within the batch, and scoring. The original database's schema, rows, and fetch state do not
 change. A nonexistent target database remains nonexistent. Dry-run still contacts feeds.
+
+Both SQLite backup connections are explicitly closed on success and failure, so no
+database handles remain open when the temporary preview directory is removed.
 
 After a successful fetch, start the dashboard or press Refresh if it is already open.
 Updates use the existing feed, filters, detail drawer, and status actions.

@@ -1,5 +1,10 @@
 import { defineConfig } from "@playwright/test";
 
+const backendPython =
+  process.platform === "win32"
+    ? "../backend/.venv/Scripts/python.exe"
+    : "../backend/.venv/bin/python";
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
@@ -16,7 +21,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "../backend/.venv/bin/python ../scripts/integration-backend.py",
+      command: `"${backendPython}" ../scripts/integration-backend.py`,
       url: "http://127.0.0.1:8000/api/stats",
       reuseExistingServer: false,
       timeout: 30_000,

@@ -3,6 +3,7 @@
 import hashlib
 import json
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -219,8 +220,9 @@ def fetch_sources(engine: Engine, adapters: list[SourceAdapter]) -> FetchReport:
 
 def copy_database(source: Path, destination: Path) -> None:
     """SQLite online backup from a read-only connection, including committed WAL data."""
-    with sqlite3.connect(source.as_uri() + "?mode=ro", uri=True) as original:
-        with sqlite3.connect(destination) as copy:
+    # Connection context managers commit/roll back but do not close the handles.
+    with closing(sqlite3.connect(source.as_uri() + "?mode=ro", uri=True)) as original:
+        with closing(sqlite3.connect(destination)) as copy:
             original.backup(copy)
 
 

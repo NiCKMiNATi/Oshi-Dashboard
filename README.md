@@ -22,6 +22,53 @@ npm --prefix frontend run dev
 
 Open `http://127.0.0.1:3000` for the feed or `http://127.0.0.1:3000/oshi` to manage your following. Both servers run in the foreground; stop each with Ctrl-C.
 
+### Windows (PowerShell)
+
+Run these commands from the repository root with Python 3.12+ and Node.js 20.9+ installed:
+
+```powershell
+.\scripts\setup.ps1
+.\backend\.venv\Scripts\python.exe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 --reload --reload-dir backend
+```
+
+In another terminal:
+
+```powershell
+npm.cmd --prefix frontend run dev
+```
+
+Open `http://127.0.0.1:3000`. Stop each server with Ctrl-C. The setup script installs
+native Windows dependencies and preserves a copied macOS virtual environment under
+ignored `.runtime/backups/`. Use `-PythonBin C:\path\to\python.exe` to select Python.
+Virtual environments and `node_modules` are machine-specific; install them on each
+computer instead of copying them. Setup does not seed or open your personal database.
+
+Optional fictional demo data and manual feed fetching use the backend directly:
+
+```powershell
+.\backend\.venv\Scripts\python.exe -m app.seed
+.\backend\.venv\Scripts\python.exe -m app.ingestion --dry-run
+```
+
+Configure feeds as described below before fetching. The detached `oshi` service CLI
+uses macOS process ownership tools; Windows uses the foreground commands above.
+
+To verify the Windows checkout, stop the foreground servers and run:
+
+```powershell
+.\backend\.venv\Scripts\python.exe -m pytest -c backend/pyproject.toml backend/tests scripts/tests
+.\backend\.venv\Scripts\ruff.exe check backend
+.\backend\.venv\Scripts\ruff.exe format --check backend
+npm.cmd --prefix frontend run lint
+npm.cmd --prefix frontend run typecheck
+npm.cmd --prefix frontend run build
+npm.cmd --prefix frontend run test:integration
+```
+
+Tests use temporary databases. macOS CLI tests are skipped on Windows; the direct
+ingestion command and browser suite run on both platforms. Browser tests require
+Google Chrome and free ports 3000/8000.
+
 ## Local CLI for macOS
 
 After setup, install the user-owned command once:

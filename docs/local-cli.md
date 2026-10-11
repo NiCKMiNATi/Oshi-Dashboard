@@ -90,3 +90,10 @@ Verification runners use their own sessions. The CLI tracks their descendants, i
 - **Browser suite:** install Google Chrome. `oshi test` handles its own services; standalone `npm run test:integration` still requires free ports.
 
 See [the milestone report](local-cli-report.md) for actual command and process verification results.
+
+## Windows background ingestion
+
+Windows uses a separate thin `scripts/oshi.cmd` wrapper for `fetch` and
+`background on/off/status/run`. It does not import or change the macOS service CLI.
+See [Windows background fetch](background-fetch-windows.md). Stopping dashboard services
+does not disable that task. All fetch entry points now share a project-local ingestion lock.

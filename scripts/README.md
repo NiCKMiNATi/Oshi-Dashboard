@@ -2,7 +2,7 @@
 
 Run these from the repository root. Paths are quoted and scripts also work when invoked from another directory.
 
-- Windows: `.\scripts\setup.ps1` installs native dependencies. See the [Windows quick start](../README.md#windows-powershell) for foreground servers, optional seeding/fetching, and checks. The detached `oshi` CLI remains macOS-only.
+- Windows: `.\scripts\setup.ps1` installs native dependencies. See the [Windows quick start](../README.md#windows-powershell) for foreground servers, optional seeding/fetching, and checks. The detached service CLI remains macOS-only; `scripts/oshi.cmd` supports Windows `fetch` and `background on/off/status/run`. See [background setup](../docs/background-fetch-windows.md).
 - `./scripts/setup.sh`: create the backend venv and install locked Python/npm dependencies. Requires Python 3.12+ and Node 20.9+. Set `PYTHON_BIN=python3.12` to select an interpreter.
 - `./scripts/seed.sh`: create the schema and add missing fictional fixtures. Accepts `--database-path /path/to/demo.db`.
 - `./scripts/dev-backend.sh`: foreground API server with reload at `http://127.0.0.1:8000`; stop with Ctrl-C.

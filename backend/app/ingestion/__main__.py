@@ -3,13 +3,15 @@
 import argparse
 import sys
 import time
+from contextlib import nullcontext
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.config import resolve_database_path
+from app.config import ROOT_DIR, resolve_database_path
 from app.ingestion.config import ConfigError, config_path, load_sources
 from app.ingestion.pipeline import run_fetch
 from app.ingestion.rss import RSSAdapter
+from app.ingestion.runtime import FetchBusy, background_log, fetch_lock
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -18,21 +20,56 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--source", metavar="KEY")
+    parser.add_argument("--background", action="store_true", help="Write rotating runtime logs")
+    parser.add_argument("--database-path", help="Explicit database path (scheduler use)")
+    parser.add_argument("--sources-path", help="Explicit source config path (scheduler use)")
     args = parser.parse_args(argv)
     if args.source is not None and not args.source.strip():
         parser.error("--source requires a nonempty source key")
+    runtime = ROOT_DIR / ".runtime"
+    try:
+        with fetch_lock(runtime):
+            with background_log(runtime) if args.background else nullcontext():
+                started = time.monotonic()
+                code = 1
+                print("Fetch started", flush=True)
+                try:
+                    code = fetch(args)
+                except KeyboardInterrupt:
+                    print("Fetch cancelled; active transaction rolled back.", file=sys.stderr)
+                    code = 130
+                except Exception as error:
+                    # Exception text/tracebacks may contain source URLs or credentials.
+                    print(f"Fatal fetch error ({type(error).__name__}).", file=sys.stderr)
+                    code = 1
+                finally:
+                    print(f"Fetch ended: result={code} duration={time.monotonic() - started:.1f}s")
+                return code
+    except FetchBusy as error:
+        print(str(error), file=sys.stderr)
+        return 0  # Deliberate skip; the active invocation owns the log.
+    except OSError as error:
+        print(f"Cannot open fetch lock/log ({type(error).__name__}).", file=sys.stderr)
+        return 1
+
+
+def fetch(args: argparse.Namespace) -> int:
     started = time.monotonic()
     print("OSHI Fetch" + (" (dry run - no database changes)" if args.dry_run else ""), flush=True)
     try:
-        path = config_path()
+        path = (ROOT_DIR / args.sources_path).resolve() if args.sources_path else config_path()
         sources = load_sources(path, args.source)
         if not sources:
             print(
                 f"\nNo enabled sources configured. Create {path} using config/sources.example.json."
             )
+            print(
+                "Sources checked   0\nItems received    0\nMatched           0\n"
+                "New updates       0\nDuplicates        0\nIgnored           0\nFailed sources    0"
+            )
             return 0
         report = run_fetch(
-            resolve_database_path(),
+            resolve_database_path(args.database_path),
             [RSSAdapter(source) for source in sources],
             dry_run=args.dry_run,
         )

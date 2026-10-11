@@ -125,7 +125,7 @@ Only active followed oshi receive new updates. Matching uses names, enabled keyw
 and linked catalog aliases. Repeated fetches deduplicate imported items and preserve
 existing update content and status. Dry-run uses a temporary database copy and leaves
 personal schema, content, and source state unchanged. Refresh or start the dashboard to
-see imported updates. This is manual fetching; no scheduled/background fetching exists.
+see imported updates. Optional [Windows background fetching](docs/background-fetch-windows.md) runs the same pipeline every 30 minutes, independently of dashboard servers.
 Configuration, adapter contracts, matching, dedupe, and limitations are in
 [the ingestion guide](docs/ingestion.md).
 
@@ -206,3 +206,10 @@ Tests create temporary databases and never use the personal database. Browser in
 The UI follows the accessible [Figma dashboard](https://www.figma.com/design/dS4aiNmBAUBURfRpKK6dgk?node-id=2-2) and [management frame](https://www.figma.com/design/dS4aiNmBAUBURfRpKK6dgk?node-id=2-116), with the supplied dark tokens. The connector exposes these under “v0.1 Wireframes”; a separate “v0.1 Prototype” page was not available during implementation.
 
 MSN ingestion, authentication, deployment, and PostgreSQL remain outside this milestone.
+
+## Windows background ingestion
+
+After Windows setup and source configuration, use `.\scripts\oshi.cmd background on`,
+`background status`, `background run`, and `background off`. The user-level task runs every
+30 minutes while signed in (including a locked session), with servers and terminals closed.
+See [setup, logs, uninstall, and Windows verification](docs/background-fetch-windows.md).

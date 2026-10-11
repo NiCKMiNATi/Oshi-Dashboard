@@ -17,6 +17,7 @@ from app.main import create_app
     "entrypoint",
     [
         "backend",
+        "background",
         pytest.param(
             "macos-cli",
             marks=pytest.mark.skipif(os.name == "nt", reason="The service CLI requires POSIX"),
@@ -32,6 +33,12 @@ def test_real_cli_fetch_without_services_then_api_reads_updates(tmp_path, rss_se
     if entrypoint == "macos-cli":
         (root / "backend/.venv").symlink_to(sys.prefix, target_is_directory=True)
         shutil.copyfile(Path(__file__).parents[2] / "scripts/oshi.py", script)
+    elif entrypoint == "background":
+        repository = Path(__file__).parents[2]
+        shutil.copytree(repository / "backend/app", root / "backend/app")
+        shutil.copyfile(
+            repository / "scripts/background_fetch.py", root / "scripts/background_fetch.py"
+        )
     database = root / "personal.db"
     with TestClient(create_app(database), base_url="http://127.0.0.1") as client:
         tracked = client.post("/api/oshi", json={"name": "原神", "type": "GAME"}).json()
@@ -73,7 +80,11 @@ def test_real_cli_fetch_without_services_then_api_reads_updates(tmp_path, rss_se
             if entrypoint == "macos-cli"
             else [sys.executable, "-m", "app.ingestion"]
         )
-        return subprocess.run(
+        log = root / ".runtime/background-fetch.log"
+        offset = log.stat().st_size if log.exists() else 0
+        if entrypoint == "background":
+            command = [sys.executable, str(root / "scripts/background_fetch.py")]
+        result = subprocess.run(
             [*command, "--source", "selected", *flags],
             cwd=tmp_path,
             env=environment,
@@ -81,6 +92,12 @@ def test_real_cli_fetch_without_services_then_api_reads_updates(tmp_path, rss_se
             capture_output=True,
             timeout=15,
         )
+        if entrypoint == "background":
+            assert log.exists(), result.stderr
+            result.stdout = log.read_bytes()[offset:].decode("utf-8")
+            assert "Z Fetch started" in result.stdout
+            assert "Fetch ended: result=0" in result.stdout
+        return result
 
     original = database.read_bytes()
     dry = fetch("--dry-run")

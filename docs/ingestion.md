@@ -1,8 +1,9 @@
 # Manual ingestion
 
 `oshi fetch` reads configured RSS/Atom sources and creates ordinary Updates for active
-tracked oshi. FastAPI and Next.js may both be stopped. Fetching is manual: no scheduler,
-background worker, scraping, MSN adapter, or external catalog integration is installed.
+tracked oshi. FastAPI and Next.js may both be stopped. Manual fetching remains available; optional [Windows scheduled fetching](background-fetch-windows.md)
+invokes the same entry point every 30 minutes. No persistent worker, scraping, MSN adapter,
+or external catalog integration is installed.
 
 ## Configure sources
 
@@ -73,6 +74,11 @@ On Windows after `.\scripts\setup.ps1`, use:
 ```powershell
 .\backend\.venv\Scripts\python.exe -m app.ingestion --dry-run
 ```
+
+All ingestion CLI invocations use the project-local `.runtime/ingestion.lock`; a busy
+fetch is skipped with exit 0. Kernel locks release on crash; do not delete the lock file.
+`--background` enables bounded rotating UTC logs. `--database-path` and `--sources-path`
+explicitly override the environment for scheduler invocations.
 
 The macOS `oshi` wrapper retains its existing command lock and lifecycle behavior. No
 shell profile change or wrapper reinstall is needed for an already installed command.
@@ -214,8 +220,8 @@ Only entries currently present in the feed can be fetched. Hash fallback may mer
 same-source entries with identical text; changing URLs without stable IDs may escape
 dedupe. HTTP 304 does not replay cached content. The identity fingerprint forces a fresh
 request when following changes, but cannot recover items the publisher has removed.
-No scheduler, launchd/Windows Task Scheduler setup, notifications, deployment, or queues
-are included in this milestone.
+Optional Windows Task Scheduler setup is documented in [background fetching](background-fetch-windows.md).
+No launchd setup, notifications, deployment, or queues are included.
 
 ## Verification
 
